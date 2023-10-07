@@ -36,17 +36,20 @@ func (p *PdfService) GeneratePdf() ([]byte, error) {
 
 	pdf.SetFont("Arial", "", 12)
 
-	colWidths := []float64{50, 90}
-	pdf.SetFillColor(200, 220, 255)
-
 	headers := []string{"Attribute", "Value"}
+	colWidths := []float64{70, 120}
+
+	// Set light purple fill for header
+	pdf.SetFillColor(204, 204, 255) // Light purple fill
 
 	// Display Member Data
-	for _, h := range headers {
-		pdf.CellFormat(70, 10, h, "1", 0, "C", true, 0, "")
-		colWidths = colWidths[1:]
+	for i, h := range headers {
+		pdf.CellFormat(colWidths[i], 10, h, "1", 0, "C", true, 0, "")
 	}
 	pdf.Ln(-1)
+
+	// Set light grey fill for data rows
+	pdf.SetFillColor(240, 240, 240) // Light grey fill
 
 	data := [][]string{
 		{"First Name", member.User.FirstName},
@@ -59,13 +62,14 @@ func (p *PdfService) GeneratePdf() ([]byte, error) {
 		data = append(data, []string{"Joining Date", jd})
 	}
 
-	for _, row := range data {
-		for _, d := range row {
-			pdf.CellFormat(70, 10, d, "1", 0, "L", false, 0, "")
+	for rowIndex, row := range data {
+		fill := rowIndex%2 != 0
+		for colIndex, d := range row {
+			pdf.CellFormat(colWidths[colIndex], 10, d, "1", 0, "L", fill, 0, "")
 		}
 		pdf.Ln(-1)
 	}
-	pdf.Ln(10) // Some space before the Attendance Data
+	pdf.Ln(10)
 
 	// Display Attendance Data
 	pdf.SetFont("Arial", "B", 18)
@@ -74,15 +78,21 @@ func (p *PdfService) GeneratePdf() ([]byte, error) {
 	pdf.SetFont("Arial", "", 12)
 
 	headers = []string{"Punch Time", "Punch", "Status"}
-	for _, str := range headers {
-		pdf.CellFormat(60, 10, str, "1", 0, "C", true, 0, "")
+	colWidths = []float64{70, 60, 60}
+	pdf.SetFillColor(204, 204, 255) // Light purple fill
+
+	for i, str := range headers {
+		pdf.CellFormat(colWidths[i], 10, str, "1", 0, "C", true, 0, "")
 	}
 	pdf.Ln(-1)
 
-	for _, a := range attendance {
-		pdf.CellFormat(60, 10, a.PunchTime.Format("2006-01-02 15:04:05"), "1", 0, "L", false, 0, "")
-		pdf.CellFormat(60, 10, helpers.PunchToString(a.Punch), "1", 0, "L", false, 0, "")
-		pdf.CellFormat(60, 10, helpers.AttendanceStatusToString(a.Status), "1", 0, "L", false, 0, "")
+	pdf.SetFillColor(240, 240, 240) // Light grey fill
+
+	for rowIndex, a := range attendance {
+		fill := rowIndex%2 != 0
+		pdf.CellFormat(colWidths[0], 10, a.PunchTime.Format("2006-01-02 15:04:05"), "1", 0, "C", fill, 0, "")
+		pdf.CellFormat(colWidths[1], 10, helpers.PunchToString(a.Punch), "1", 0, "C", fill, 0, "")
+		pdf.CellFormat(colWidths[2], 10, helpers.AttendanceStatusToString(a.Status), "1", 0, "C", fill, 0, "")
 		pdf.Ln(-1)
 	}
 
