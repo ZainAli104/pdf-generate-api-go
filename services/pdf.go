@@ -37,17 +37,20 @@ func (p *PdfService) GeneratePdf() ([]byte, error) {
 
 	pdf.SetFont("Arial", "B", 24)
 	pdf.Cell(0, 20, "Member Report")
-	pdf.Ln(25)
+	pdf.Ln(20)
 
 	pdf.SetFont("Arial", "", 12)
 
 	headers := []string{"Attribute", "Value"}
 	colWidths := []float64{70, 120}
 
+	// Display => Member Data
+	headers = []string{"First Name", "Last Name", "Identifier", "Joining Date"}
+	colWidths = []float64{50, 50, 60, 30}
+
 	// Set light purple fill for header
 	pdf.SetFillColor(204, 204, 255) // Light purple fill
 
-	// Display Member Data
 	for i, h := range headers {
 		pdf.CellFormat(colWidths[i], 10, h, "1", 0, "C", true, 0, "")
 	}
@@ -56,32 +59,30 @@ func (p *PdfService) GeneratePdf() ([]byte, error) {
 	// Set light grey fill for data rows
 	pdf.SetFillColor(240, 240, 240) // Light grey fill
 
-	data := [][]string{
-		{"First Name", member.User.FirstName},
-		{"Last Name", member.User.LastName},
-		{"Identifier", member.Identifier},
+	data := []string{
+		member.User.FirstName,
+		member.User.LastName,
+		member.Identifier,
 	}
 
 	if member.JoiningDate != nil {
-		jd := member.JoiningDate.Format("2006-01-02")
-		data = append(data, []string{"Joining Date", jd})
+		data = append(data, member.JoiningDate.Format("2006-01-02"))
+	} else {
+		data = append(data, "") // If JoiningDate is nil, we add an empty string to align the table cells
 	}
 
-	for rowIndex, row := range data {
-		fill := rowIndex%2 != 0
-		for colIndex, d := range row {
-			pdf.CellFormat(colWidths[colIndex], 10, d, "1", 0, "L", fill, 0, "")
-		}
-		pdf.Ln(-1)
+	for i, d := range data {
+		pdf.CellFormat(colWidths[i], 10, d, "1", 0, "C", false, 0, "")
 	}
-	pdf.Ln(10)
+	pdf.Ln(-1)
 
+	// Display => Attendance Data
 	pdf.SetFont("Arial", "B", 18)
 	pdf.Cell(0, 20, "Attendance Data")
 	pdf.Ln(20)
 	pdf.SetFont("Arial", "", 12)
 
-	headers = []string{"Punch Time", "Punch", "Status"}
+	headers = []string{"Punch Time", "Type", "Status"}
 	colWidths = []float64{70, 60, 60}
 	pdf.SetFillColor(204, 204, 255) // Light purple fill
 
