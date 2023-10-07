@@ -8,6 +8,7 @@ import (
 	"os"
 	"pdf-generate/helpers"
 	"pdf-generate/models"
+	"sort"
 )
 
 func NewPdfService() *PdfService {
@@ -26,6 +27,10 @@ func (p *PdfService) GeneratePdf() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	sort.Slice(attendance, func(i, j int) bool {
+		return attendance[i].PunchTime.Before(attendance[j].PunchTime)
+	})
 
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.AddPage()
@@ -71,7 +76,6 @@ func (p *PdfService) GeneratePdf() ([]byte, error) {
 	}
 	pdf.Ln(10)
 
-	// Display Attendance Data
 	pdf.SetFont("Arial", "B", 18)
 	pdf.Cell(0, 20, "Attendance Data")
 	pdf.Ln(20)
@@ -88,11 +92,24 @@ func (p *PdfService) GeneratePdf() ([]byte, error) {
 
 	pdf.SetFillColor(240, 240, 240) // Light grey fill
 
+	var prevDate string
 	for rowIndex, a := range attendance {
-		fill := rowIndex%2 != 0
-		pdf.CellFormat(colWidths[0], 10, a.PunchTime.Format("2006-01-02 15:04:05"), "1", 0, "C", fill, 0, "")
-		pdf.CellFormat(colWidths[1], 10, helpers.PunchToString(a.Punch), "1", 0, "C", fill, 0, "")
-		pdf.CellFormat(colWidths[2], 10, helpers.AttendanceStatusToString(a.Status), "1", 0, "C", fill, 0, "")
+		currentDate := a.PunchTime.Format("2006-01-02")
+		if currentDate != prevDate {
+			// Add a new row for the date
+			pdf.SetFont("Arial", "B", 12)   // Bold font for date rows
+			pdf.SetFillColor(98, 98, 160)   // Darker purple fill for date rows
+			pdf.SetTextColor(255, 255, 255) // Set text color to white for date rows
+			pdf.CellFormat(190, 10, currentDate, "1", 0, "C", true, 0, "")
+			pdf.Ln(-1)
+			prevDate = currentDate
+			pdf.SetFont("Arial", "", 12)    // Reset to regular font for other rows
+			pdf.SetTextColor(0, 0, 0)       // Reset text color to black for other rows
+			pdf.SetFillColor(240, 240, 240) // Reset to light grey fill for other rows
+		}
+		pdf.CellFormat(colWidths[0], 10, a.PunchTime.Format("15:04:05"), "1", 0, "C", rowIndex%2 != 0, 0, "")
+		pdf.CellFormat(colWidths[1], 10, helpers.PunchToString(a.Punch), "1", 0, "C", rowIndex%2 != 0, 0, "")
+		pdf.CellFormat(colWidths[2], 10, helpers.AttendanceStatusToString(a.Status), "1", 0, "C", rowIndex%2 != 0, 0, "")
 		pdf.Ln(-1)
 	}
 
