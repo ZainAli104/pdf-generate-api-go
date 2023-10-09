@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/jung-kurt/gofpdf"
 	"net/http"
 	"os"
@@ -82,8 +83,8 @@ func (p *PdfService) GeneratePdf() ([]byte, error) {
 	pdf.Ln(20)
 	pdf.SetFont("Arial", "", 12)
 
-	headers = []string{"Punch Time", "Type", "Status"}
-	colWidths = []float64{70, 60, 60}
+	headers = []string{"Punch Time", "Type", "Status", "Fine"}
+	colWidths = []float64{55, 55, 55, 25}
 	pdf.SetFillColor(204, 204, 255) // Light purple fill
 
 	for i, str := range headers {
@@ -94,6 +95,11 @@ func (p *PdfService) GeneratePdf() ([]byte, error) {
 	pdf.SetFillColor(240, 240, 240) // Light grey fill
 
 	var prevDate string
+	totalWidth := float64(0)
+	for _, w := range colWidths {
+		totalWidth += w
+	}
+
 	for rowIndex, a := range attendance {
 		currentDate := a.PunchTime.Format("2006-01-02")
 		if currentDate != prevDate {
@@ -101,16 +107,35 @@ func (p *PdfService) GeneratePdf() ([]byte, error) {
 			pdf.SetFont("Arial", "B", 12)   // Bold font for date rows
 			pdf.SetFillColor(98, 98, 160)   // Darker purple fill for date rows
 			pdf.SetTextColor(255, 255, 255) // Set text color to white for date rows
-			pdf.CellFormat(190, 10, currentDate, "1", 0, "C", true, 0, "")
+			pdf.CellFormat(totalWidth, 10, currentDate, "1", 0, "C", true, 0, "")
 			pdf.Ln(-1)
 			prevDate = currentDate
 			pdf.SetFont("Arial", "", 12)    // Reset to regular font for other rows
 			pdf.SetTextColor(0, 0, 0)       // Reset text color to black for other rows
 			pdf.SetFillColor(240, 240, 240) // Reset to light grey fill for other rows
 		}
+
+		// Calculate the fine percentage
+		var finePercentage float64 = 0
+		if a.Status == models.AttendanceLate {
+			if a.PunchTime.Hour() == 9 {
+				if a.PunchTime.Minute() > 0 && a.PunchTime.Minute() <= 10 {
+					finePercentage = 1
+				} else if a.PunchTime.Minute() > 10 && a.PunchTime.Minute() <= 20 {
+					finePercentage = 2
+				} else if a.PunchTime.Minute() > 20 {
+					finePercentage = 3
+				}
+			} else if a.PunchTime.Hour() > 9 {
+				finePercentage = 3
+			}
+		}
+		fine := fmt.Sprintf("%.0f%%", finePercentage)
+
 		pdf.CellFormat(colWidths[0], 10, a.PunchTime.Format("15:04:05"), "1", 0, "C", rowIndex%2 != 0, 0, "")
 		pdf.CellFormat(colWidths[1], 10, helpers.PunchToString(a.Punch), "1", 0, "C", rowIndex%2 != 0, 0, "")
 		pdf.CellFormat(colWidths[2], 10, helpers.AttendanceStatusToString(a.Status), "1", 0, "C", rowIndex%2 != 0, 0, "")
+		pdf.CellFormat(colWidths[3], 10, fine, "1", 0, "C", rowIndex%2 != 0, 0, "")
 		pdf.Ln(-1)
 	}
 
